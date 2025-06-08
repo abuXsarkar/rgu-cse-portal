@@ -5,20 +5,16 @@ import { getFirestore, Firestore, collection, addDoc, onSnapshot, query, orderBy
 import { AlertTriangle, Award, Bell, Briefcase, CalendarDays, CheckCircle, Building2, Image as ImageIcon, Info, Library, LogIn, LogOut, MessageCircle as MessageCircleIcon, PlusCircle, RefreshCw, Send, Settings, ShieldCheck, UserCircle, UserPlus, XCircle } from 'lucide-react';
 
 // --- 1. GLOBAL DECLARATIONS & ENVIRONMENT VARIABLES ---
+// This block requires the file to be .tsx (TypeScript)
 declare global {
-  var __app_id: string | undefined;
-  var __firebase_config: string | undefined;
+  interface Window {
+    __app_id?: string;
+    __firebase_config?: string;
+  }
 }
 
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'cse-rgu-prod-final';
-const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : JSON.stringify({
-  apiKey: "YOUR_FALLBACK_API_KEY",
-  authDomain: "YOUR_FALLBACK_AUTH_DOMAIN",
-  projectId: "YOUR_FALLBACK_PROJECT_ID",
-  storageBucket: "YOUR_FALLBACK_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_FALLBACK_MESSAGING_SENDER_ID",
-  appId: "YOUR_FALLBACK_APP_ID"
-});
+const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'cse-rgu-prod-final';
+const firebaseConfigStr = typeof window.__firebase_config !== 'undefined' ? window.__firebase_config : process.env.REACT_APP_FIREBASE_CONFIG;
 
 // --- 2. TYPE DEFINITIONS & CONFIGURATIONS ---
 type UserRole = 'student' | 'cr' | 'professor' | 'hod' | 'admin';
@@ -67,14 +63,14 @@ let firebaseApp: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 try {
-  const parsedConfig = JSON.parse(firebaseConfigStr);
-  if (parsedConfig.projectId && parsedConfig.projectId !== "YOUR_FALLBACK_PROJECT_ID") {
+  if(firebaseConfigStr) {
+    const parsedConfig = JSON.parse(firebaseConfigStr);
     firebaseApp = initializeApp(parsedConfig);
     auth = getAuth(firebaseApp);
     db = getFirestore(firebaseApp);
     setLogLevel('debug');
   } else {
-    console.warn("Using fallback Firebase config.");
+     console.warn("Firebase config is missing.");
   }
 } catch (error) { console.error("Fatal Error initializing Firebase.", error); }
 
@@ -163,23 +159,14 @@ const AuthPage: React.FC = () => {
                     <button onClick={() => { setIsLoginView(true); setError(null); }} className={`px-6 py-3 font-semibold transition-all ${isLoginView ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400'}`}>Login</button>
                     <button onClick={() => { setIsLoginView(false); setError(null); }} className={`px-6 py-3 font-semibold transition-all ${!isLoginView ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400'}`}>Sign Up</button>
                 </div>
-                
                 <h1 className="text-3xl font-bold text-white mb-2 text-center">{isLoginView ? "Welcome Back" : "Create Account"}</h1>
                 <p className="text-slate-400 mb-8 text-center">{isLoginView ? "Sign in to access the portal." : "Your account will require admin approval."}</p>
-
                 <form onSubmit={handleAuthAction} className="space-y-4">
-                    {!isLoginView && (
-                        <div className="flex bg-slate-700 rounded-lg p-1 mb-4">
-                            <button type="button" onClick={() => setAccountType('student')} className={`w-1/2 rounded-md py-2 font-semibold transition-colors ${accountType === 'student' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-600'}`}>I am a Student</button>
-                            <button type="button" onClick={() => setAccountType('professor')} className={`w-1/2 rounded-md py-2 font-semibold transition-colors ${accountType === 'professor' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-600'}`}>I am a Professor</button>
-                        </div>
-                    )}
-                    
+                    {!isLoginView && <div className="flex bg-slate-700 rounded-lg p-1 mb-4"><button type="button" onClick={() => setAccountType('student')} className={`w-1/2 rounded-md py-2 font-semibold transition-colors ${accountType === 'student' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-600'}`}>I am a Student</button><button type="button" onClick={() => setAccountType('professor')} className={`w-1/2 rounded-md py-2 font-semibold transition-colors ${accountType === 'professor' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-600'}`}>I am a Professor</button></div>}
                     {!isLoginView && <div><label className={commonLabelClass} htmlFor="displayName">Full Name</label><input type="text" name="displayName" onChange={handleChange} value={formData.displayName} className={commonInputClass} required /></div>}
                     <div><label className={commonLabelClass} htmlFor="email">Email Address</label><input type="email" name="email" onChange={handleChange} value={formData.email} className={commonInputClass} required /></div>
                     <div><label className={commonLabelClass} htmlFor="password">Password</label><input type="password" name="password" onChange={handleChange} value={formData.password} className={commonInputClass} required /></div>
                     {!isLoginView && <div><label className={commonLabelClass} htmlFor="mobileNo">Mobile No.</label><input type="tel" name="mobileNo" onChange={handleChange} value={formData.mobileNo} className={commonInputClass} required /></div>}
-                    
                     {!isLoginView && accountType === 'student' && (
                         <div className="space-y-4 p-4 border border-slate-700 rounded-lg animate-fadeIn">
                             <div><label className={commonLabelClass} htmlFor="rollNo">Roll No.</label><input type="text" name="rollNo" onChange={handleChange} value={formData.rollNo} className={commonInputClass} required /></div>
@@ -189,9 +176,7 @@ const AuthPage: React.FC = () => {
                             </div>
                         </div>
                     )}
-                    
                     {error && <Alert type="error" message={error} />}
-                    
                     <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-colors disabled:opacity-50">
                         {loading ? <Spinner size="sm" /> : (isLoginView ? <LogIn size={20}/> : <UserPlus size={20}/>)}
                         {loading ? 'Processing...' : (isLoginView ? 'Login' : 'Sign Up')}
@@ -216,12 +201,11 @@ const PendingApprovalPage: React.FC = () => (
 );
 
 const HomePage: React.FC = () => {
-  const { userProfile, currentUser } = useAuth();
+  const { userProfile } = useAuth();
   return (
     <Card>
       <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-500 mb-6">Welcome, {userProfile?.displayName}!</h2>
       <p className="text-lg text-slate-300 mb-4">You are now logged in. Explore the portal using the navigation menu.</p>
-      {/* Role switcher can be added here for demo purposes if needed */}
     </Card>
   );
 };
@@ -463,6 +447,7 @@ const App: React.FC = () => {
     const [currentView, setCurrentView] = useState<ViewType>('home');
     const { currentUser, userProfile, isAuthReady } = useAuth();
     const [modalState, setModalState] = useState<ModalState>({ isOpen: false, type: null });
+    
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [events, setEvents] = useState<EventItem[]>([]);
     const [achievements, setAchievements] = useState<Achievement[]>([]);
